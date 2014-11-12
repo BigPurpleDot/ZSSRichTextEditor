@@ -12,6 +12,7 @@
 #import "ZSSBarButtonItem.h"
 #import "HRColorUtil.h"
 #import "ZSSTextView.h"
+#import "UIResponder+FirstResponder.h"
 
 
 @interface UIWebView (HackishAccessoryHiding)
@@ -96,6 +97,7 @@ static Class hackishFixClass = Nil;
 @property (nonatomic, strong) NSMutableArray *customZSSBarButtonItems;
 @property (nonatomic, strong) NSString *internalHTML;
 @property (nonatomic) BOOL editorLoaded;
+@property (nonatomic, strong) UIView * viewForToolbar;
 - (NSString *)removeQuotesFromHTML:(NSString *)html;
 - (NSString *)tidyHTML:(NSString *)html;
 - (void)enableToolbarItems:(BOOL)enable;
@@ -103,6 +105,17 @@ static Class hackishFixClass = Nil;
 @end
 
 @implementation ZSSRichTextEditor
+
+- (id)initWithParentViewController:(UIViewController *)parent frame:(CGRect)frame {
+    self = [super init];
+    if (self) {
+        [parent addChildViewController:self];
+        self.view.frame = frame;
+        [self didMoveToParentViewController:parent];
+    }
+    
+    return self;
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -134,6 +147,9 @@ static Class hackishFixClass = Nil;
     self.editorView.scrollView.bounces = NO;
     self.editorView.backgroundColor = [UIColor whiteColor];
     [self.view addSubview:self.editorView];
+    
+    [self.editorView.scrollView setShowsVerticalScrollIndicator:NO];
+    [self.editorView.scrollView setShowsHorizontalScrollIndicator:NO];
     
     // Scrolling View
     self.toolBarScroll = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, [self isIpad] ? self.view.frame.size.width : self.view.frame.size.width - 44, 44)];
@@ -177,6 +193,19 @@ static Class hackishFixClass = Nil;
         line.backgroundColor = [UIColor lightGrayColor];
         line.alpha = 0.7f;
         [toolbarCropper addSubview:line];
+        
+        // Shadowview.
+        UIView* shadowView = [[UIView alloc] initWithFrame:CGRectMake(self.view.frame.size.width-44, 0, 1, 44)];
+        [shadowView setBackgroundColor:[UIColor clearColor]];
+        // add shadow to left of keyboard hide button.
+        shadowView.layer.shadowColor = [UIColor blackColor].CGColor;
+        shadowView.layer.shadowOffset = CGSizeMake(-1, 0);
+        shadowView.layer.shadowRadius = 3.0f;
+        shadowView.layer.shadowOpacity = 0.7f;
+        shadowView.layer.shadowPath = [UIBezierPath bezierPathWithRect:CGRectMake(-2, 0, 1, 44)].CGPath;
+        shadowView.layer.masksToBounds = NO;
+        
+        [self.toolbarHolder addSubview:shadowView];
     }
     [self.view addSubview:self.toolbarHolder];
     
@@ -194,6 +223,16 @@ static Class hackishFixClass = Nil;
         [self.editorView loadHTMLString:htmlString baseURL:self.baseURL];
         self.resourcesLoaded = YES;
     }
+    
+    
+    // Get the view to use for the toolbar.
+    if (self.parentViewController) {
+        self.viewForToolbar = self.parentViewController.navigationController.view;
+    }
+    else {
+        self.viewForToolbar = [UIApplication sharedApplication].keyWindow.rootViewController.view;
+    }
+    [self.viewForToolbar addSubview:self.toolbarHolder];
 
 }
 
@@ -530,6 +569,10 @@ static Class hackishFixClass = Nil;
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    
+    //end editing to close the keyboard. this will also trigger the keyboard toolbar to dissapear
+    [self.editorView endEditing:YES];
+    [self.sourceView endEditing:YES];
     
     [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillShowNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillHideNotification object:nil];
@@ -1116,7 +1159,7 @@ static Class hackishFixClass = Nil;
 
 #pragma mark - Keyboard status
 
-- (void)keyboardWillShowOrHide:(NSNotification *)notification {
+- (void)original_keyboardWillShowOrHide:(NSNotification *)notification {
     
     // Orientation
     UIInterfaceOrientation orientation = [UIApplication sharedApplication].statusBarOrientation;
@@ -1192,6 +1235,57 @@ static Class hackishFixClass = Nil;
         
 	}//end
     
+}
+
+#pragma mark - Keyboard status
+- (void)keyboardWillShowOrHide:(NSNotification *)notification {
+    id firstResponder = [UIResponder currentFirstResponder];
+    if (firstResponder != [self.editorView hackishlyFoundBrowserView] && firstResponder != self.editorView && [notification.name isEqualToString:UIKeyboardWillShowNotification]) {
+        return;
+    }
+    
+    // Orientation
+    UIInterfaceOrientation orientation = [UIApplication sharedApplication].statusBarOrientation;
+    
+    // User Info
+    NSDictionary *info = notification.userInfo;
+    CGFloat duration = [[info objectForKey:UIKeyboardAnimationDurationUserInfoKey] floatValue];
+    int curve = [[info objectForKey:UIKeyboardAnimationCurveUserInfoKey] intValue];
+    CGRect keyboardEnd = [[info objectForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    
+    // Toolbar Sizes
+    CGFloat sizeOfToolbar = self.toolbarHolder.frame.size.height;
+    
+    // Keyboard Size
+    //Checks if IOS8, gets correct keyboard height
+    CGFloat keyboardHeight = UIInterfaceOrientationIsLandscape(orientation) ? ([[[UIDevice currentDevice] systemVersion] floatValue] >= 8.000000) ? keyboardEnd.size.height : keyboardEnd.size.width : keyboardEnd.size.height;
+    
+    // Correct Curve
+    UIViewAnimationOptions animationOptions = curve << 16;
+    
+    if ([notification.name isEqualToString:UIKeyboardWillShowNotification]) {
+        [UIView animateWithDuration:duration delay:0 options:animationOptions animations:^{
+            
+            // Toolbar
+            CGRect frame = self.toolbarHolder.frame;
+            frame.origin.y = self.viewForToolbar.frame.size.height - (keyboardHeight + sizeOfToolbar);
+            self.toolbarHolder.frame = frame;
+        } completion:nil];
+        
+    } else {
+        [self animateToolbarOut];
+    }//end
+}
+
+
+- (void)animateToolbarOut {
+    CGFloat duration = 0.25;
+    
+    [UIView animateWithDuration:duration animations:^{
+        CGRect frame = self.toolbarHolder.frame;
+        frame.origin.y = [UIScreen mainScreen].bounds.size.height + 200; //self.viewForToolbar.frame.size.height + keyboardHeight;
+        self.toolbarHolder.frame = frame;
+    }];
 }
 
 

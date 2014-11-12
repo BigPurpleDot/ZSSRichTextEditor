@@ -56,6 +56,9 @@ typedef NS_ENUM(NSInteger, ZSSRichTextEditorToolbar) {
  */
 @interface ZSSRichTextEditor : UIViewController <UIWebViewDelegate, HRColorPickerViewControllerDelegate, UITextViewDelegate>
 
+// If the text editor will be contained within a view controller, init with this.
+- (id)initWithParentViewController:(UIViewController *)parent frame:(CGRect)frame;
+
 
 /**
  *  The base URL to use for the webView
