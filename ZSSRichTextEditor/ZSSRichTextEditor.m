@@ -866,7 +866,6 @@ static Class hackishFixClass = Nil;
 
 
 - (void)insertLink:(NSString *)url title:(NSString *)title {
-    
     NSString *trigger = [NSString stringWithFormat:@"zss_editor.insertLink(\"%@\", \"%@\");", url, title];
     [self.editorView stringByEvaluatingJavaScriptFromString:trigger];
     

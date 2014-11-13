@@ -347,22 +347,17 @@ zss_editor.setBackgroundColor = function(color) {
 // Needs addClass method
 
 zss_editor.insertLink = function(url, title) {
-	
     zss_editor.restorerange();
-    var sel = document.getSelection();
-	if (sel.toString().length != 0) {
-        if (sel.rangeCount) {
-			
-			var el = document.createElement("a");
-    		el.setAttribute("href", url);
-            el.setAttribute("title", title);
-			
-            var range = sel.getRangeAt(0).cloneRange();
-            range.surroundContents(el);
-            sel.removeAllRanges();
-            sel.addRange(range);
-        }
-	}
+    
+    var html;
+    if (url.indexOf('http') != 0) {
+        html = "<a href=\"http://" + url + "\">" + title + "</a>";
+    }
+    else {
+        html = "<a href=\"" + url + "\">" + title + "</a>";
+    }
+
+    zss_editor.insertHTML(html);
 	zss_editor.enabledEditingItems();
 }
 
