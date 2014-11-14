@@ -772,9 +772,11 @@ static Class hackishFixClass = Nil;
 }
 
 - (void)textColor {
-    
     // Save the selection location
     [self.editorView stringByEvaluatingJavaScriptFromString:@"zss_editor.prepareInsert();"];
+    
+    //this ensures the nav bar doesnt go over the color picker view
+    self.navigationController.navigationBar.translucent = NO;
     
     // Call the picker
     HRColorPickerViewController *colorPicker = [HRColorPickerViewController cancelableFullColorPickerViewControllerWithColor:[UIColor whiteColor]];
@@ -782,7 +784,6 @@ static Class hackishFixClass = Nil;
     colorPicker.tag = 1;
     colorPicker.title = NSLocalizedString(@"Text Color", nil);
     [self.navigationController pushViewController:colorPicker animated:YES];
-    
 }
 
 - (void)bgColor {
