@@ -834,6 +834,8 @@ static Class hackishFixClass = Nil;
 
 - (void)showInsertLinkDialogWithLink:(NSString *)url title:(NSString *)title {
     
+    [self.editorView endEditing:YES];
+    
     // Insert Button Title
     NSString *insertButtonTitle = !self.selectedLinkURL ? NSLocalizedString(@"Insert", nil) : NSLocalizedString(@"Update", nil);
     
@@ -931,6 +933,8 @@ static Class hackishFixClass = Nil;
 }
 
 - (void)showInsertImageDialogWithLink:(NSString *)url alt:(NSString *)alt {
+    
+    [self.editorView endEditing:YES];
     
     // Insert Button Title
     NSString *insertButtonTitle = !self.selectedImageURL ? NSLocalizedString(@"Insert", nil) : NSLocalizedString(@"Update", nil);
