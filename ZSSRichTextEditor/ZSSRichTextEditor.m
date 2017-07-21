@@ -236,6 +236,10 @@ static Class hackishFixClass = Nil;
 
 }
 
+- (void)viewDidDisappear:(BOOL)animated {
+    [self.toolbar removeFromSuperview];
+    [self.toolbarHolder removeFromSuperview];
+}
 
 - (void)setEnabledToolbarItems:(ZSSRichTextEditorToolbar)enabledToolbarItems {
     
